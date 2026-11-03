@@ -1,0 +1,406 @@
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============ 1. FULLSCREEN & LOCK ORIENTATION ============
+function requestFullscreenAndLock() {
+  const elem = document.documentElement;
+  if (elem.requestFullscreen) {
+    elem.requestFullscreen().then(() => {
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(e => console.log('Lock orientasi gagal:', e));
+      }
+    }).catch(e => console.log('Fullscreen gagal:', e));
+  }
+}
+document.body.addEventListener('pointerdown', function triggerFS() {
+  requestFullscreenAndLock();
+  document.body.removeEventListener('pointerdown', triggerFS);
+}, { once: true });
+
+
+// ============ 2. SETUP SCENE, CAMERA, RENDERER ============
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a24); 
+scene.fog = new THREE.Fog(0x1a1a24, 20, 120);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+
+// ============ 3. LIGHTING & LAVA ============
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+sun.position.set(10, 30, 10);
+sun.castShadow = true;
+sun.shadow.camera.left = -20; sun.shadow.camera.right = 20;
+sun.shadow.camera.top = 50; sun.shadow.camera.bottom = -80;
+scene.add(sun);
+
+const lavaLight = new THREE.PointLight(0xff3300, 2, 50);
+lavaLight.position.set(0, -5, -40);
+scene.add(lavaLight);
+
+const lavaMat = new THREE.MeshBasicMaterial({ color: 0xff2200 });
+const lava = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), lavaMat);
+lava.rotation.x = -Math.PI / 2;
+lava.position.y = -8; 
+scene.add(lava);
+
+
+// ============ 4. LEVEL & PLATFORMS ============
+const platforms = []; 
+const platformMat = new THREE.MeshStandardMaterial({ color: 0x444455, roughness: 0.8 });
+const breakableMat = new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.9 });
+const movingMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57, roughness: 0.7 });
+
+function createPlatform(x, y, z, width, depth, type = 'static') {
+  const height = 0.5;
+  const geo = new THREE.BoxGeometry(width, height, depth);
+  let mat = platformMat;
+  if (type === 'breaking') mat = breakableMat;
+  if (type.includes('moving')) mat = movingMat;
+
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(x, y, z); 
+  mesh.receiveShadow = true; mesh.castShadow = true;
+  scene.add(mesh);
+
+  const p = {
+    mesh, width, depth, type,
+    startX: x, startY: y, startZ: z, range: 2, speed: 1.5, phase: Math.random() * Math.PI * 2,
+    isBreaking: false, breakTimer: 0, isFallen: false
+  };
+  platforms.push(p);
+  return p;
+}
+
+// --- Jalur Easy Mode ---
+createPlatform(0, 0, 0, 8, 8, 'static');           // Start
+createPlatform(0, 0, -7, 5, 5, 'static');          
+createPlatform(3, 1, -13, 5, 5, 'moving_x');       
+createPlatform(0, 2, -19, 6, 6, 'static');         
+createPlatform(-3, 2.5, -25, 5, 5, 'moving_y');    
+createPlatform(0, 3.5, -31, 5, 5, 'breaking');     
+createPlatform(0, 4.5, -37, 8, 8, 'static');       
+createPlatform(0, 5.5, -44, 6, 6, 'moving_x');     
+createPlatform(0, 6.5, -50, 5, 5, 'static');       
+createPlatform(0, 7.5, -56, 8, 8, 'static');       // Finish
+
+// --- Garis Finis ---
+const finishLine = new THREE.Mesh(new THREE.BoxGeometry(7, 0.1, 7), new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x00ff00, emissiveIntensity: 1 }));
+finishLine.position.set(0, 7.8, -56); scene.add(finishLine);
+
+// --- Papan Nama Finis ---
+const poleMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+const leftPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 6), poleMat); leftPole.position.set(-4, 10.5, -56); scene.add(leftPole);
+const rightPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 6), poleMat); rightPole.position.set(4, 10.5, -56); scene.add(rightPole);
+
+const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 256;
+const ctx = canvas.getContext('2d');
+ctx.fillStyle = '#111111'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 15; ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+ctx.font = 'bold 80px sans-serif'; ctx.fillStyle = '#00ff00'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+ctx.fillText('PUTZZDEV MENGAKUI', canvas.width / 2, canvas.height / 2 - 40);
+ctx.font = 'bold 90px sans-serif'; ctx.fillStyle = '#ffffff'; ctx.fillText('KAMU JAGO!', canvas.width / 2, canvas.height / 2 + 50);
+
+const texture = new THREE.CanvasTexture(canvas); texture.needsUpdate = true;
+const board = new THREE.Mesh(new THREE.PlaneGeometry(8, 2), new THREE.MeshStandardMaterial({ map: texture, side: THREE.DoubleSide, emissive: 0x00ff00, emissiveIntensity: 0.2 }));
+board.position.set(0, 11.5, -56); scene.add(board);
+
+const finishLight = new THREE.PointLight(0x00ff00, 3, 15); finishLight.position.set(0, 9, -56); scene.add(finishLight);
+
+
+// ============ 5. KARAKTER & FISIKA ============
+const character = new THREE.Group();
+character.position.set(0, 0.25, 0); 
+scene.add(character);
+
+const physics = { velocityY: 0, isGrounded: true, gravity: -32, jumpForce: 13, coyoteTime: 0, jumpCount: 0, maxJumps: 2 };
+
+// Material Karakter
+const matSkin = new THREE.MeshStandardMaterial({ color: 0xffd1b3 });
+const matShirt = new THREE.MeshStandardMaterial({ color: 0x2c3e50 });
+const matPants = new THREE.MeshStandardMaterial({ color: 0x1a1a1c });
+const matShoe = new THREE.MeshStandardMaterial({ color: 0xa61c2b });
+const matEyeWhite = new THREE.MeshStandardMaterial({ color: 0xffffff });
+const matPupil = new THREE.MeshStandardMaterial({ color: 0x000000 });
+const matHair = new THREE.MeshStandardMaterial({ color: 0xd1d1d6, roughness: 0.6 });
+
+// Badan & Kepala
+const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.8, 4, 16), matShirt); torso.position.y = 1.4; torso.castShadow = true; character.add(torso);
+const headGroup = new THREE.Group(); headGroup.position.y = 2.2; character.add(headGroup);
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 32, 32), matSkin); head.castShadow = true; headGroup.add(head);
+
+// Wajah
+const leftEye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 16), matEyeWhite); leftEye.position.set(-0.1, 0.05, 0.27); headGroup.add(leftEye);
+const leftPupil = new THREE.Mesh(new THREE.SphereGeometry(0.03, 16, 16), matPupil); leftPupil.position.set(-0.1, 0.05, 0.31); headGroup.add(leftPupil);
+const rightEye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 16), matEyeWhite); rightEye.position.set(0.1, 0.05, 0.27); headGroup.add(rightEye);
+const rightPupil = new THREE.Mesh(new THREE.SphereGeometry(0.03, 16, 16), matPupil); rightPupil.position.set(0.1, 0.05, 0.31); headGroup.add(rightPupil);
+const nose = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.1, 16), matSkin); nose.rotation.x = Math.PI / 2; nose.position.set(0, -0.02, 0.3); headGroup.add(nose);
+const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, 0.02), matPupil); mouth.position.set(0, -0.12, 0.28); headGroup.add(mouth);
+
+// Rambut
+const hairGroup = new THREE.Group(); headGroup.add(hairGroup);
+const baseHair = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16, 0, Math.PI * 2, 0, Math.PI / 1.6), matHair); baseHair.position.y = 0.02; baseHair.castShadow = true; hairGroup.add(baseHair);
+const bangGeo = new THREE.ConeGeometry(0.08, 0.25, 4);
+const bangLeft = new THREE.Mesh(bangGeo, matHair); bangLeft.position.set(-0.15, 0.15, 0.24); bangLeft.rotation.set(0.2, 0, -0.3); hairGroup.add(bangLeft);
+const bangCenter = new THREE.Mesh(bangGeo, matHair); bangCenter.position.set(0, 0.2, 0.27); bangCenter.rotation.set(0.1, 0, 0); bangCenter.scale.set(1.2, 1, 1.2); hairGroup.add(bangCenter);
+const bangRight = new THREE.Mesh(bangGeo, matHair); bangRight.position.set(0.15, 0.15, 0.24); bangRight.rotation.set(0.2, 0, 0.3); hairGroup.add(bangRight);
+
+// Lengan & Kaki
+const leftArmPivot = new THREE.Group(); leftArmPivot.position.set(-0.4, 1.8, 0); character.add(leftArmPivot);
+const leftArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.6, 4, 8), matShirt); leftArm.position.y = -0.4; leftArm.castShadow = true; leftArmPivot.add(leftArm);
+const rightArmPivot = new THREE.Group(); rightArmPivot.position.set(0.4, 1.8, 0); character.add(rightArmPivot);
+const rightArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.6, 4, 8), matShirt); rightArm.position.y = -0.4; rightArm.castShadow = true; rightArmPivot.add(rightArm);
+
+const leftLegPivot = new THREE.Group(); leftLegPivot.position.set(-0.15, 0.9, 0); character.add(leftLegPivot);
+const leftLeg = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.7, 4, 8), matPants); leftLeg.position.y = -0.4; leftLeg.castShadow = true; leftLegPivot.add(leftLeg);
+const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.35), matShoe); leftShoe.position.set(0, -0.8, 0.05); leftLegPivot.add(leftShoe);
+
+const rightLegPivot = new THREE.Group(); rightLegPivot.position.set(0.15, 0.9, 0); character.add(rightLegPivot);
+const rightLeg = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.7, 4, 8), matPants); rightLeg.position.y = -0.4; rightLeg.castShadow = true; rightLegPivot.add(rightLeg);
+const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.35), matShoe); rightShoe.position.set(0, -0.8, 0.05); rightLegPivot.add(rightShoe);
+
+
+// ============ 6. KAMERA & PEMISAHAN AREA SENTUH ============
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enablePan = false; 
+controls.minDistance = 5; 
+controls.maxDistance = 15;
+controls.maxPolarAngle = Math.PI / 2 - 0.1; 
+camera.position.set(0, 4, 8);
+controls.target.set(0, 1.5, 0);
+
+controls.domElement.addEventListener('pointerdown', function(e) {
+  const x = e.clientX, y = e.clientY;
+  const w = window.innerWidth, h = window.innerHeight;
+  const isLeftBottom = x < 180 && y > h - 180;
+  const isRightBottom = x > w - 220 && y > h - 160;
+  if (isLeftBottom || isRightBottom) e.stopImmediatePropagation();
+}, { capture: true });
+
+
+// ============ 7. INPUT (JOYSTICK & TOMBOL) ============
+let joystickVector = new THREE.Vector2(0, 0);
+let isRunning = false;
+let gameState = 'PLAYING'; 
+
+const overlay = document.getElementById('overlay');
+document.getElementById('btn-restart').addEventListener('click', () => { location.reload(); });
+
+function showOverlay(title, desc, color) {
+  document.getElementById('overlay-title').textContent = title;
+  document.getElementById('overlay-title').style.color = color;
+  document.getElementById('overlay-desc').textContent = desc;
+  overlay.style.display = 'flex';
+}
+
+const joystickArea = document.getElementById('joystick-area');
+const joystickKnob = document.getElementById('joystick-knob');
+let joystickActive = false;
+const maxDist = 40;
+
+function updateKnob(x, y) {
+  const dist = Math.sqrt(x*x + y*y);
+  if (dist > maxDist) { x = (x / dist) * maxDist; y = (y / dist) * maxDist; }
+  joystickKnob.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+  joystickVector.x = x / maxDist; joystickVector.y = -y / maxDist;
+}
+
+const handleStart = (e) => { e.preventDefault(); joystickActive = true; handleMove(e); };
+const handleMove = (e) => {
+  if (!joystickActive) return;
+  e.preventDefault();
+  const touch = e.touches ? e.touches[0] : e;
+  const rect = joystickArea.getBoundingClientRect();
+  updateKnob(touch.clientX - (rect.left + rect.width/2), touch.clientY - (rect.top + rect.height/2));
+};
+const handleEnd = () => { joystickActive = false; joystickVector.set(0,0); joystickKnob.style.transform = `translate(-50%, -50%)`; };
+
+joystickArea.addEventListener('touchstart', handleStart, { passive: false });
+joystickArea.addEventListener('touchmove', handleMove, { passive: false });
+joystickArea.addEventListener('touchend', handleEnd);
+joystickArea.addEventListener('mousedown', handleStart);
+window.addEventListener('mousemove', handleMove);
+window.addEventListener('mouseup', handleEnd);
+
+const btnJump = document.getElementById('btn-jump');
+btnJump.addEventListener('pointerdown', (e) => {
+  e.preventDefault(); 
+  if (physics.isGrounded) {
+    physics.jumpCount = 1; physics.velocityY = physics.jumpForce; physics.isGrounded = false;
+  } else if (physics.jumpCount < physics.maxJumps) {
+    physics.jumpCount++; physics.velocityY = physics.jumpForce;
+  }
+});
+
+const btnRun = document.getElementById('btn-run');
+btnRun.addEventListener('touchstart', (e) => { e.preventDefault(); isRunning = true; });
+btnRun.addEventListener('touchend', (e) => { e.preventDefault(); isRunning = false; });
+btnRun.addEventListener('pointerdown', (e) => { isRunning = true; });
+btnRun.addEventListener('pointerup', (e) => { isRunning = false; });
+btnRun.addEventListener('pointerleave', (e) => { isRunning = false; });
+
+
+// ============ 8. COLLISION (BENTURAN) ============
+function checkGroundCollision(x, z, y) {
+  const feetY = y; const tolerance = 0.3; 
+  for (let p of platforms) {
+    if (p.isFallen) continue;
+    if (x > p.mesh.position.x - p.width/2 && x < p.mesh.position.x + p.width/2 &&
+        z > p.mesh.position.z - p.depth/2 && z < p.mesh.position.z + p.depth/2) {
+      const topY = p.mesh.position.y + 0.25;
+      if (feetY >= topY - tolerance && feetY <= topY + 0.5) return { y: topY, platform: p }; 
+    }
+  }
+  return null; 
+}
+
+function checkWallCollision(x, z, y) {
+  const radius = 0.35; const feetY = y; 
+  for (let p of platforms) {
+    if (p.isFallen) continue;
+    const topY = p.mesh.position.y + 0.25;
+    const bottomY = p.mesh.position.y - 0.25;
+    if (feetY < topY - 0.1 && feetY > bottomY - 1) { 
+      if (x + radius > p.mesh.position.x - p.width/2 && x - radius < p.mesh.position.x + p.width/2 &&
+          z + radius > p.mesh.position.z - p.depth/2 && z - radius < p.mesh.position.z + p.depth/2) return true;
+    }
+  }
+  return false;
+}
+
+
+// ============ 9. GAME LOOP (ANIMASI) ============
+const clock = new THREE.Clock();
+let walkTime = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (gameState !== 'PLAYING') { renderer.render(scene, camera); return; }
+
+  const delta = Math.min(clock.getDelta(), 0.1);
+  const t = clock.getElapsedTime();
+  const speed = isRunning ? 9 : 5;
+  let isMoving = false;
+
+  // Update Platform Bergerak & Rapuh
+  platforms.forEach(p => {
+    if (p.type === 'moving_x') p.mesh.position.x = p.startX + Math.sin(t * p.speed + p.phase) * p.range;
+    else if (p.type === 'moving_y') p.mesh.position.y = p.startY + Math.sin(t * p.speed + p.phase) * p.range;
+    else if (p.type === 'breaking' && p.isBreaking && !p.isFallen) {
+      p.breakTimer -= delta;
+      p.mesh.position.x = p.startX + (Math.random() - 0.5) * 0.1;
+      p.mesh.position.z = p.startZ + (Math.random() - 0.5) * 0.1;
+      if (p.breakTimer <= 0) { p.isFallen = true; p.mesh.position.y -= 20; }
+    }
+  });
+
+  // Gerakan Karakter
+  const forward = new THREE.Vector3(); camera.getWorldDirection(forward); forward.y = 0; forward.normalize();
+  const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0,1,0)).normalize();
+
+  let nextX = character.position.x; let nextZ = character.position.z;
+
+  if (Math.abs(joystickVector.x) > 0.1 || Math.abs(joystickVector.y) > 0.1) {
+    const moveX = forward.x * joystickVector.y + right.x * joystickVector.x;
+    const moveZ = forward.z * joystickVector.y + right.z * joystickVector.x;
+    const len = Math.sqrt(moveX*moveX + moveZ*moveZ);
+    nextX += (moveX / len) * speed * delta; nextZ += (moveZ / len) * speed * delta;
+    isMoving = true; character.rotation.y = Math.atan2(moveX, moveZ); 
+  }
+
+  // Cek Tabrakan Dinding
+  if (!checkWallCollision(nextX, character.position.z, character.position.y)) character.position.x = nextX;
+  if (!checkWallCollision(character.position.x, nextZ, character.position.y)) character.position.z = nextZ;
+
+  // Fisika Vertikal
+  const groundData = checkGroundCollision(character.position.x, character.position.z, character.position.y);
+  if (groundData && physics.velocityY <= 0) {
+    character.position.y = groundData.y; 
+    physics.velocityY = 0; physics.isGrounded = true; physics.jumpCount = 0; 
+    if (groundData.platform.type === 'moving_x') character.position.x = character.position.x; 
+    else if (groundData.platform.type === 'moving_y') character.position.y = groundData.y; 
+    if (groundData.platform.type === 'breaking' && !groundData.platform.isBreaking) {
+      groundData.platform.isBreaking = true; groundData.platform.breakTimer = 0.7;
+    }
+  } else {
+    physics.isGrounded = false;
+  }
+
+  if (!physics.isGrounded) {
+    physics.velocityY += physics.gravity * delta;
+    character.position.y += physics.velocityY * delta;
+    const landingData = checkGroundCollision(character.position.x, character.position.z, character.position.y + 0.5);
+    if (landingData && character.position.y <= landingData.y) {
+      character.position.y = landingData.y; physics.velocityY = 0; physics.isGrounded = true; physics.jumpCount = 0;
+    }
+  }
+
+  // Cek Jatuh ke Lava
+  if (character.position.y < -3) {
+    gameState = 'GAMEOVER'; showOverlay('GAME OVER', 'Kamu jatuh ke lava panas!', '#ff3333');
+  }
+
+  // Cek Menang
+  if (character.position.z < -53 && character.position.y > 6) {
+    gameState = 'WIN'; showOverlay('YOU WIN!', 'Putzzdev mengakui kamu jago!', '#00ff00');
+  }
+
+  // Animasi Karakter (Jalan, Lompat, Idle)
+  if (!physics.isGrounded) {
+    leftLegPivot.rotation.x = THREE.MathUtils.lerp(leftLegPivot.rotation.x, -0.5, 0.2);
+    rightLegPivot.rotation.x = THREE.MathUtils.lerp(rightLegPivot.rotation.x, 0.5, 0.2);
+    leftArmPivot.rotation.x = THREE.MathUtils.lerp(leftArmPivot.rotation.x, -1.2, 0.2);
+    rightArmPivot.rotation.x = THREE.MathUtils.lerp(rightArmPivot.rotation.x, -1.2, 0.2);
+  } else if (isMoving) {
+    walkTime += delta * speed * 2; 
+    const swing = Math.sin(walkTime) * 0.8;
+    leftLegPivot.rotation.x = swing; rightLegPivot.rotation.x = -swing;
+    leftArmPivot.rotation.x = -swing * 0.7; rightArmPivot.rotation.x = swing * 0.7;
+  } else {
+    leftLegPivot.rotation.x = THREE.MathUtils.lerp(leftLegPivot.rotation.x, 0, 0.1);
+    rightLegPivot.rotation.x = THREE.MathUtils.lerp(rightLegPivot.rotation.x, 0, 0.1);
+    leftArmPivot.rotation.x = THREE.MathUtils.lerp(leftArmPivot.rotation.x, 0, 0.1);
+    rightArmPivot.rotation.x = THREE.MathUtils.lerp(rightArmPivot.rotation.x, 0, 0.1);
+    headGroup.rotation.y = Math.sin(t * 0.5) * 0.2; 
+  }
+
+  // Update Kamera
+  const targetPos = character.position.clone(); targetPos.y += 1.5; 
+  controls.target.lerp(targetPos, 0.1);
+  const camDir = camera.position.clone().sub(controls.target).normalize();
+  const desiredCamPos = controls.target.clone().add(camDir.multiplyScalar(8)); 
+  if (desiredCamPos.y < character.position.y + 2) desiredCamPos.y = character.position.y + 2; 
+  camera.position.lerp(desiredCamPos, 0.1);
+  controls.update();
+
+  // Efek Lava Berdenyut
+  lavaMat.color.setHSL(0.03 + Math.sin(t * 2) * 0.02, 1, 0.5);
+  
+  renderer.render(scene, camera);
+}
+
+animate();
+
+// Responsive Resize
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+
+// ============ 10. REGISTER SERVICE WORKER (PWA OFFLINE) ============
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('Service Worker terdaftar!', reg))
+      .catch(err => console.log('Service Worker gagal:', err));
+  });
+}

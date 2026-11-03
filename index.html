@@ -1,513 +1,114 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Script Loadstring - Salin Link</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: system-ui, 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, 'Roboto', monospace;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#ff4c00">
+  <title>Parkour 3D - Putzzdev</title>
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="./manifest.json">
+  
+  <style>
+    /* --- RESET & DASAR --- */
+    body { margin: 0; overflow: hidden; background: #111; touch-action: none; font-family: sans-serif; user-select: none; -webkit-user-select: none; }
+    canvas { display: block; }
 
-        body {
-            background: linear-gradient(135deg, #0a0f1e 0%, #0d1117 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 1.5rem;
-        }
+    /* --- OVERLAY PUTAR HP --- */
+    #rotate-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #1a1a24; color: white; z-index: 9999;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      text-align: center; transition: opacity 0.3s;
+    }
+    #rotate-overlay .icon { font-size: 60px; margin-bottom: 20px; animation: rotate 2s infinite ease-in-out; }
+    @keyframes rotate {
+      0% { transform: rotate(0deg); } 50% { transform: rotate(-90deg); } 100% { transform: rotate(0deg); }
+    }
+    @media (orientation: landscape) { #rotate-overlay { display: none !important; } }
 
-        .card {
-            max-width: 800px;
-            width: 100%;
-            background: rgba(22, 27, 34, 0.95);
-            backdrop-filter: blur(0px);
-            border-radius: 2rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(48, 54, 61, 0.5);
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
+    /* --- UI JOYSTICK (KIRI) --- */
+    #joystick-area {
+      position: absolute; bottom: 20px; left: 20px;
+      width: 160px; height: 160px; z-index: 5; touch-action: none;
+    }
+    #joystick-zone {
+      position: absolute; bottom: 20px; left: 20px;
+      width: 120px; height: 120px; background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 50%;
+      pointer-events: none;
+    }
+    #joystick-knob {
+      position: absolute; top: 50%; left: 50%;
+      width: 50px; height: 50px; background: rgba(255, 255, 255, 0.7);
+      border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none;
+    }
 
-        .header {
-            background: linear-gradient(135deg, #1e2a3a, #0f1722);
-            padding: 1.8rem 2rem;
-            text-align: center;
-            border-bottom: 1px solid #2d3748;
-        }
+    /* --- TOMBOL KANAN --- */
+    #btn-jump {
+      position: absolute; bottom: 40px; right: 40px;
+      width: 80px; height: 80px; background: rgba(0, 255, 100, 0.6);
+      border: 2px solid rgba(255, 255, 255, 0.8); border-radius: 50%;
+      color: white; font-weight: bold; display: flex; align-items: center;
+      justify-content: center; user-select: none; font-size: 18px;
+      touch-action: none; z-index: 5; cursor: pointer;
+    }
+    #btn-jump:active { background: rgba(0, 255, 100, 0.9); transform: scale(0.95); }
 
-        .header h1 {
-            font-size: 1.8rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            letter-spacing: -0.3px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
+    #btn-run {
+      position: absolute; bottom: 40px; right: 140px;
+      width: 70px; height: 70px; background: rgba(255, 59, 59, 0.6);
+      border: 2px solid rgba(255, 255, 255, 0.8); border-radius: 50%;
+      color: white; font-weight: bold; display: flex; align-items: center;
+      justify-content: center; user-select: none; touch-action: none; z-index: 5;
+      cursor: pointer;
+    }
+    #btn-run:active { background: rgba(255, 59, 59, 0.9); transform: scale(0.95); }
 
-        .badge {
-            background: rgba(78, 205, 196, 0.2);
-            padding: 0.25rem 0.75rem;
-            border-radius: 60px;
-            font-size: 0.75rem;
-            color: #4ecdc4;
-            font-weight: 500;
-        }
-
-        .sub {
-            font-size: 0.85rem;
-            margin-top: 0.6rem;
-            opacity: 0.7;
-            color: #a0aec0;
-        }
-
-        .content {
-            padding: 2rem;
-        }
-
-        /* info box */
-        .info-box {
-            background: #1a1f2e;
-            border-radius: 1rem;
-            padding: 1rem 1.2rem;
-            margin-bottom: 1.5rem;
-            border-left: 4px solid #4ecdc4;
-            font-size: 0.85rem;
-            color: #cbd5e0;
-        }
-
-        .info-box strong {
-            color: #4ecdc4;
-        }
-
-        /* script container */
-        .script-container {
-            background: #0a0e17;
-            border-radius: 1.2rem;
-            border: 1px solid #2d3748;
-            overflow: hidden;
-            margin-bottom: 1.5rem;
-        }
-
-        .script-header {
-            background: #131822;
-            padding: 0.8rem 1.2rem;
-            border-bottom: 1px solid #2d3748;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .script-label {
-            font-family: monospace;
-            font-size: 0.75rem;
-            color: #8b949e;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .copy-all-btn {
-            background: #238636;
-            color: white;
-            border: none;
-            padding: 0.4rem 1rem;
-            border-radius: 2rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .copy-all-btn:hover {
-            background: #2ea043;
-            transform: scale(0.97);
-        }
-
-        .script-content {
-            padding: 1.2rem;
-            overflow-x: auto;
-        }
-
-        pre {
-            margin: 0;
-            font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            line-height: 1.5;
-            color: #e6edf3;
-            white-space: pre-wrap;
-            word-break: break-all;
-        }
-
-        code {
-            font-family: inherit;
-        }
-
-        /* tombol tambahan */
-        .action-buttons {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            margin-top: 0.5rem;
-        }
-
-        .btn {
-            flex: 1;
-            min-width: 140px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 0.8rem 1.2rem;
-            border-radius: 3rem;
-            font-weight: 600;
-            font-size: 0.9rem;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            background: #21262d;
-            color: #c9d1d9;
-            border: 1px solid #3d444d;
-        }
-
-        .btn-primary {
-            background: #238636;
-            color: white;
-            border: none;
-        }
-
-        .btn-primary:hover {
-            background: #2ea043;
-            transform: translateY(-1px);
-        }
-
-        .btn-secondary {
-            background: #1f6feb;
-            color: white;
-            border: none;
-        }
-
-        .btn-secondary:hover {
-            background: #388bfd;
-            transform: translateY(-1px);
-        }
-
-        /* input manual */
-        .manual-section {
-            margin-top: 1.8rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid #2d3748;
-        }
-
-        .manual-label {
-            font-size: 0.8rem;
-            color: #8b949e;
-            margin-bottom: 0.6rem;
-            display: block;
-        }
-
-        .link-input-wrapper {
-            display: flex;
-            gap: 0.6rem;
-            flex-wrap: wrap;
-        }
-
-        #customLinkInput {
-            flex: 1;
-            background: #0a0e17;
-            border: 1px solid #3d444d;
-            border-radius: 2rem;
-            padding: 0.7rem 1rem;
-            color: #e6edf3;
-            font-size: 0.85rem;
-            font-family: monospace;
-            outline: none;
-        }
-
-        #customLinkInput:focus {
-            border-color: #4ecdc4;
-            box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.2);
-        }
-
-        .btn-small {
-            padding: 0.7rem 1.2rem;
-            background: #30363d;
-            border-radius: 2rem;
-            font-size: 0.8rem;
-        }
-
-        footer {
-            font-size: 0.7rem;
-            text-align: center;
-            padding: 1rem;
-            background: #0d1117;
-            color: #6e7681;
-            border-top: 1px solid #21262d;
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%) scale(0.9);
-            background: #1f6feb;
-            color: white;
-            padding: 0.7rem 1.5rem;
-            border-radius: 60px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            opacity: 0;
-            transition: 0.2s;
-            pointer-events: none;
-            z-index: 1000;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }
-
-        .toast.show {
-            opacity: 1;
-            transform: translateX(-50%) scale(1);
-        }
-    </style>
+    /* --- OVERLAY GAME OVER / WIN --- */
+    #overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8); display: none; flex-direction: column;
+      justify-content: center; align-items: center; color: white;
+      font-family: sans-serif; text-align: center; z-index: 10;
+    }
+    #overlay h1 { margin: 0 0 10px 0; font-size: 40px; }
+    #overlay p { margin: 0 0 20px 0; font-size: 18px; }
+    #overlay button {
+      padding: 10px 30px; font-size: 20px; background: #ff4c00;
+      color: white; border: none; border-radius: 8px; font-weight: bold;
+    }
+  </style>
 </head>
 <body>
+  <div id="rotate-overlay">
+    <div class="icon">📱</div>
+    <h2 style="margin:0 0 10px 0;">Putar HP Kamu</h2>
+    <p style="margin:0; opacity:0.7;">Mainkan game ini dalam mode Landscape (Miring)</p>
+  </div>
 
-<div class="card">
-    <div class="header">
-        <h1>
-            📜 Loadstring Link
-            <span class="badge">Hardcoded Script</span>
-        </h1>
-        <div class="sub">Link / script sudah tertanam di dalam HTML · langsung salin dan gunakan</div>
-    </div>
+  <div id="joystick-area">
+    <div id="joystick-zone"><div id="joystick-knob"></div></div>
+  </div>
 
-    <div class="content">
-        <div class="info-box">
-            💡 <strong>Link sudah tersedia di bawah</strong> — Tidak perlu upload atau simpan eksternal. 
-            Klik tombol "Salin Script" untuk langsung menyalin <code>loadstring(...)</code> dan gunakan di executor Roblox.
-        </div>
+  <div id="btn-jump">LOMPAT</div>
+  <div id="btn-run">LARI</div>
 
-        <!-- TAMPILAN LINK/SCRIPT YANG SUDAH DI TARO DI DALAM HTML -->
-        <div class="script-container">
-            <div class="script-header">
-                <span class="script-label">🔗 LOADSTRING SCRIPT (HARDCODED)</span>
-                <button class="copy-all-btn" id="copyScriptBtn">
-                    📋 Salin Seluruh Script
-                </button>
-            </div>
-            <div class="script-content">
-                <pre id="scriptCode"><code>loadstring(game:HttpGet("https://raw.githubusercontent.com/PutzzXD12/script/refs/heads/main/Putzz-HUB.lua"))()</code></pre>
-            </div>
-        </div>
+  <div id="overlay">
+    <h1 id="overlay-title">GAME OVER</h1>
+    <p id="overlay-desc">Kamu gagal!</p>
+    <button id="btn-restart">COBA LAGI</button>
+  </div>
 
-        <!-- Tombol aksi cepat -->
-        <div class="action-buttons">
-            <button class="btn btn-primary" id="copyLoadstringBtn">
-                🧬 Salin loadstring()
-            </button>
-            <button class="btn btn-secondary" id="copyRawUrlBtn">
-                🔗 Salin Raw URL
-            </button>
-        </div>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
 
-        <!-- Bagian manual: user bisa mengganti link sendiri (tetap tersimpan di halaman) -->
-        <div class="manual-section">
-            <label class="manual-label">✏️ Ganti link (opsional) — akan tersimpan di halaman ini</label>
-            <div class="link-input-wrapper">
-                <input type="text" id="customLinkInput" placeholder="https://raw.githubusercontent.com/username/repo/file.lua" value="https://raw.githubusercontent.com/PutzzXD12/script/refs/heads/main/Putzz-HUB.lua">
-                <button class="btn-small" id="updateLinkBtn">🔄 Perbarui Script</button>
-            </div>
-            <div style="font-size: 0.7rem; color:#6e7681; margin-top: 0.6rem;">
-                ⚡ Setelah mengganti URL, script di atas akan berubah. Bisa langsung disalin.
-            </div>
-        </div>
-
-        <div class="info-box" style="margin-top: 1rem; background: #0d1117;">
-            📌 <strong>Cara pakai:</strong> Cukup buka file HTML ini → klik "Salin loadstring()" → paste di executor Roblox (seperti Synapse, KRNL, Fluxus, dll) lalu execute.
-        </div>
-    </div>
-    <footer>
-        🔒 Script & link sepenuhnya ada di dalam file HTML · Tidak ada permintaan jaringan eksternal kecuali loadstring nanti dijalankan
-    </footer>
-</div>
-
-<div id="toastMsg" class="toast">✅ Tersalin!</div>
-
-<script>
-    (function() {
-        // Ambil elemen
-        const scriptCodePre = document.getElementById('scriptCode');
-        const copyScriptBtn = document.getElementById('copyScriptBtn');
-        const copyLoadstringBtn = document.getElementById('copyLoadstringBtn');
-        const copyRawUrlBtn = document.getElementById('copyRawUrlBtn');
-        const customLinkInput = document.getElementById('customLinkInput');
-        const updateLinkBtn = document.getElementById('updateLinkBtn');
-        const toast = document.getElementById('toastMsg');
-
-        // Helper showToast
-        function showToast(message, isError = false) {
-            toast.textContent = message || (isError ? "Gagal!" : "✅ Tersalin!");
-            if (isError) {
-                toast.style.background = "#da3633";
-            } else {
-                toast.style.background = "#238636";
-            }
-            toast.classList.add('show');
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => {
-                    toast.style.background = "#1f6feb";
-                }, 200);
-            }, 2000);
-        }
-
-        // Fungsi copy teks ke clipboard
-        async function copyText(text, successMsg = "✅ Tersalin!") {
-            if (!text || text.trim() === "") {
-                showToast("Tidak ada teks untuk disalin", true);
-                return false;
-            }
-            try {
-                await navigator.clipboard.writeText(text.trim());
-                showToast(successMsg);
-                return true;
-            } catch(err) {
-                // fallback
-                const textarea = document.createElement('textarea');
-                textarea.value = text.trim();
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textarea);
-                showToast(successMsg);
-                return true;
-            }
-        }
-
-        // Membuat full script dari URL yang diberikan
-        function generateLoadStringFromUrl(url) {
-            if (!url || url.trim() === "") {
-                return 'loadstring(game:HttpGet(""))() -- URL kosong';
-            }
-            // Bersihkan spasi
-            let cleanUrl = url.trim();
-            // Pastikan tidak ada kutip yang mengganggu, kita escape kutip jika perlu
-            // Tapi karena kita masukkan ke dalam string, cukup aman
-            return `loadstring(game:HttpGet("${cleanUrl}"))()`;
-        }
-
-        // Memperbarui tampilan script berdasarkan input customLinkInput
-        function updateDisplayedScript() {
-            let rawUrl = customLinkInput.value.trim();
-            if (rawUrl === "") {
-                rawUrl = "https://raw.githubusercontent.com/PutzzXD12/script/refs/heads/main/Putzz-HUB.lua";
-                customLinkInput.value = rawUrl;
-            }
-            const newLoadstring = generateLoadStringFromUrl(rawUrl);
-            // Update tampilan pre
-            scriptCodePre.innerHTML = `<code>${escapeHtml(newLoadstring)}</code>`;
-            return newLoadstring;
-        }
-
-        // Helper escape HTML untuk tampilan aman
-        function escapeHtml(str) {
-            return str.replace(/[&<>]/g, function(m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
-                return c;
-            });
-        }
-
-        // Mendapatkan URL raw saat ini dari input
-        function getCurrentRawUrl() {
-            return customLinkInput.value.trim() || "https://raw.githubusercontent.com/PutzzXD12/script/refs/heads/main/Putzz-HUB.lua";
-        }
-
-        // Mendapatkan full loadstring saat ini (teks yang ditampilkan)
-        function getCurrentLoadString() {
-            let url = getCurrentRawUrl();
-            return generateLoadStringFromUrl(url);
-        }
-
-        // Event: Salin seluruh script (loadstring lengkap)
-        async function handleCopyFullScript() {
-            const fullScript = getCurrentLoadString();
-            await copyText(fullScript, "📜 Script loadstring tersalin!");
-        }
-
-        // Event: Salin hanya loadstring() (sama saja dengan full script, tapi spesifik)
-        async function handleCopyLoadstringOnly() {
-            const fullScript = getCurrentLoadString();
-            await copyText(fullScript, "🧬 loadstring() tersalin, siap di execute!");
-        }
-
-        // Event: Salin Raw URL saja
-        async function handleCopyRawUrl() {
-            const rawUrl = getCurrentRawUrl();
-            if (!rawUrl) {
-                showToast("URL tidak valid", true);
-                return;
-            }
-            await copyText(rawUrl, "🔗 Raw URL tersalin!");
-        }
-
-        // Event: Update link dari input field
-        function handleUpdateLink() {
-            let newUrl = customLinkInput.value.trim();
-            if (newUrl === "") {
-                showToast("URL tidak boleh kosong, menggunakan default", true);
-                newUrl = "https://raw.githubusercontent.com/PutzzXD12/script/refs/heads/main/Putzz-HUB.lua";
-                customLinkInput.value = newUrl;
-            }
-            // Validasi sederhana: harus http atau https
-            if (!newUrl.startsWith('http://') && !newUrl.startsWith('https://')) {
-                showToast("⚠️ URL harus diawali http:// atau https://", true);
-                // Tetap perbarui tapi kasih warning
-            }
-            updateDisplayedScript();
-            showToast("🔄 Script berhasil diperbarui!", false);
-        }
-
-        // Inisialisasi default: tampilkan script awal
-        function init() {
-            // Set default jika input kosong
-            if (!customLinkInput.value) {
-                customLinkInput.value = "https://raw.githubusercontent.com/PutzzXD12/script/refs/heads/main/Putzz-HUB.lua";
-            }
-            updateDisplayedScript();
-
-            // Event listeners
-            copyScriptBtn.addEventListener('click', handleCopyFullScript);
-            copyLoadstringBtn.addEventListener('click', handleCopyLoadstringOnly);
-            copyRawUrlBtn.addEventListener('click', handleCopyRawUrl);
-            updateLinkBtn.addEventListener('click', handleUpdateLink);
-
-            // optional: ketika tekan enter di input
-            customLinkInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleUpdateLink();
-                }
-            });
-        }
-
-        init();
-    })();
-</script>
+  <script type="module" src="main.js"></script>
 </body>
 </html>
