@@ -9,10 +9,9 @@
   <link rel="manifest" href="./manifest.json">
   
   <style>
-    /* --- IMPORT FONT MODERN --- */
     @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap');
 
-    /* --- DASAR & BACKGROUND --- */
+    * { box-sizing: border-box; }
     body { 
       margin: 0; padding: 0; background: #0d0d15; font-family: 'Rajdhani', sans-serif; 
       user-select: none; -webkit-user-select: none; color: white;
@@ -21,158 +20,182 @@
       background-image: radial-gradient(circle at 50% 0%, #2a1b41 0%, #0d0d15 70%);
     }
 
-    /* --- KONTAINER UTAMA --- */
-    #auth-container {
-      width: 90%; max-width: 400px; 
-      display: flex; flex-direction: column; align-items: center;
-      position: relative; z-index: 100;
-    }
-
-    /* --- LOGO & JUDUL --- */
-    .logo-area { text-align: center; margin-bottom: 30px; }
-    .logo-box {
-      width: 80px; height: 80px; background: #9d4edd; border-radius: 20px;
-      display: flex; justify-content: center; align-items: center;
-      margin: 0 auto 15px auto; box-shadow: 0 0 20px rgba(157, 78, 221, 0.5);
-    }
-    .logo-box svg { width: 45px; height: 45px; fill: white; }
-    .logo-area h1 { margin: 0; font-size: 32px; letter-spacing: 2px; color: #e0aaff; text-shadow: 0 0 10px #9d4edd; }
+    /* Kontainer */
+    #auth-container { width: 90%; max-width: 400px; display: flex; flex-direction: column; align-items: center; z-index: 100; }
+    .logo-area { text-align: center; margin-bottom: 20px; }
+    .logo-box { width: 70px; height: 70px; background: #9d4edd; border-radius: 20px; display: flex; justify-content: center; align-items: center; margin: 0 auto 10px auto; box-shadow: 0 0 20px rgba(157, 78, 221, 0.5); }
+    .logo-box svg { width: 40px; height: 40px; fill: white; }
+    .logo-area h1 { margin: 0; font-size: 28px; letter-spacing: 2px; color: #e0aaff; text-shadow: 0 0 10px #9d4edd; }
     .logo-area p { margin: 5px 0 0 0; font-size: 12px; color: #888; letter-spacing: 1px; }
     .logo-area p span { color: #e0aaff; font-weight: bold; }
 
-    /* --- STATUS ONLINE --- */
-    .status-online {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: rgba(0, 255, 0, 0.1); border: 1px solid rgba(0, 255, 0, 0.3);
-      padding: 5px 15px; border-radius: 20px; font-size: 12px; color: #00ff00; margin-top: 15px;
+    /* TAB MENU (PURE CSS) */
+    .tabs { display: flex; width: 100%; margin-bottom: 20px; position: relative; z-index: 999; }
+    .tabs input[type="radio"] { display: none; }
+    .tab-label { 
+      flex: 1; text-align: center; padding: 12px; background: #11111a; border: 1px solid #333;
+      color: #888; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s;
     }
-    .status-dot { width: 8px; height: 8px; background: #00ff00; border-radius: 50%; box-shadow: 0 0 10px #00ff00; }
-
-    /* --- TAB MENU (MASUK / DAFTAR) --- */
-    .tab-container {
-      display: flex; width: 100%; background: #11111a; border-radius: 15px;
-      padding: 5px; margin-bottom: 25px; border: 1px solid #333;
-    }
-    .tab-btn {
-      flex: 1; padding: 12px; border: none; background: transparent; color: #888;
-      font-family: 'Rajdhani', sans-serif; font-size: 16px; font-weight: bold; letter-spacing: 1px;
-      cursor: pointer; border-radius: 10px; transition: 0.3s;
-    }
-    .tab-btn.active {
-      background: #9d4edd; color: white; box-shadow: 0 0 15px rgba(157, 78, 221, 0.4);
+    .tab-label:first-of-type { border-radius: 12px 0 0 12px; }
+    .tab-label:last-of-type { border-radius: 0 12px 12px 0; }
+    
+    /* Warna Tab Aktif */
+    #tab1:checked ~ .tabs .tab-label[for="tab1"],
+    #tab2:checked ~ .tabs .tab-label[for="tab2"] { 
+      background: #9d4edd; color: white; border-color: #9d4edd; box-shadow: 0 0 15px rgba(157, 78, 221, 0.4); 
     }
 
-    /* --- FORM AREA --- */
+    /* FORM BOX */
+    .form-container { width: 100%; position: relative; z-index: 1; }
     .form-box { width: 100%; display: none; flex-direction: column; }
-    .form-box.active { display: flex; }
+    #tab1:checked ~ .form-container #form-login { display: flex; }
+    #tab2:checked ~ .form-container #form-register { display: flex; }
 
-    /* --- INPUT GROUP --- */
-    .input-group { margin-bottom: 15px; }
-    .input-group label {
-      display: block; font-size: 12px; color: #9d4edd; font-weight: bold; letter-spacing: 1px; margin-bottom: 5px;
-    }
-    .input-wrapper {
-      display: flex; align-items: center; background: #11111a; 
-      border: 1px solid #333; border-radius: 12px; padding: 0 15px; transition: 0.3s;
-    }
-    .input-wrapper:focus-within { border-color: #9d4edd; box-shadow: 0 0 10px rgba(157, 78, 221, 0.2); }
+    .input-group { margin-bottom: 12px; }
+    .input-group label { display: block; font-size: 12px; color: #9d4edd; font-weight: bold; margin-bottom: 5px; }
+    .input-wrapper { display: flex; align-items: center; background: #11111a; border: 1px solid #333; border-radius: 12px; padding: 0 15px; transition: 0.3s; }
+    .input-wrapper:focus-within { border-color: #9d4edd; }
     .input-wrapper .icon { font-size: 18px; margin-right: 10px; }
-    .input-wrapper input {
-      flex: 1; background: transparent; border: none; outline: none;
-      color: white; font-family: 'Rajdhani', sans-serif; font-size: 16px; padding: 15px 0;
-    }
-    .input-wrapper input::placeholder { color: #555; }
-
-    /* --- TOMBOL UTAMA --- */
-    .btn-submit {
-      width: 100%; padding: 15px; margin-top: 10px; border: none; border-radius: 12px;
-      background: linear-gradient(90deg, #7b2cbf, #9d4edd); color: white;
-      font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: bold; letter-spacing: 1px;
-      cursor: pointer; transition: 0.2s; box-shadow: 0 5px 15px rgba(157, 78, 221, 0.4);
-    }
+    .input-wrapper input { flex: 1; background: transparent; border: none; outline: none; color: white; font-family: 'Rajdhani', sans-serif; font-size: 16px; padding: 12px 0; }
+    
+    .btn-submit { width: 100%; padding: 14px; margin-top: 10px; border: none; border-radius: 12px; background: linear-gradient(90deg, #7b2cbf, #9d4edd); color: white; font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 5px 15px rgba(157, 78, 221, 0.4); transition: 0.2s; }
     .btn-submit:active { transform: scale(0.97); }
     .btn-submit:disabled { background: #333; box-shadow: none; cursor: not-allowed; }
-
-    /* --- PESAN ERROR/SUKSES --- */
-    .msg { font-size: 14px; text-align: center; margin-top: 15px; height: 20px; font-weight: bold; }
+    
+    .msg { font-size: 14px; text-align: center; margin-top: 10px; height: 20px; font-weight: bold; }
     .msg.error { color: #ff3333; }
     .msg.success { color: #00ff00; }
+
+    /* UI GAME 3D */
+    #game-ui { display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; pointer-events: none; }
+    #hud { position: absolute; top: 15px; left: 15px; z-index: 4; display: flex; align-items: center; gap: 5px; background: rgba(0,0,0,0.5); padding: 8px 15px; border-radius: 20px; color: white; font-weight: bold; font-family: sans-serif; font-size: 16px; pointer-events: auto; }
+    #hud-verified { display: none; width: 18px; height: 18px; background: #1DA1F2; border-radius: 50%; align-items: center; justify-content: center; font-size: 12px; color: white; }
+
+    #rotate-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a24; color: white; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; transition: opacity 0.3s; }
+    #rotate-overlay .icon { font-size: 60px; margin-bottom: 20px; animation: rotate 2s infinite ease-in-out; }
+    @keyframes rotate { 0% { transform: rotate(0deg); } 50% { transform: rotate(-90deg); } 100% { transform: rotate(0deg); } }
+    @media (orientation: landscape) { #rotate-overlay { display: none !important; } }
+
+    #joystick-area { position: absolute; bottom: 20px; left: 20px; width: 160px; height: 160px; z-index: 5; touch-action: none; pointer-events: auto; }
+    #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 120px; height: 120px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 50%; pointer-events: none; }
+    #joystick-knob { position: absolute; top: 50%; left: 50%; width: 50px; height: 50px; background: rgba(255, 255, 255, 0.7); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+
+    #btn-jump { position: absolute; bottom: 40px; right: 40px; width: 80px; height: 80px; background: rgba(0, 255, 100, 0.6); border: 2px solid rgba(255, 255, 255, 0.8); border-radius: 50%; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; user-select: none; font-size: 18px; touch-action: none; z-index: 5; cursor: pointer; pointer-events: auto; font-family: sans-serif;}
+    #btn-jump:active { background: rgba(0, 255, 100, 0.9); transform: scale(0.95); }
+    
+    #btn-run { position: absolute; bottom: 40px; right: 140px; width: 70px; height: 70px; background: rgba(255, 59, 59, 0.6); border: 2px solid rgba(255, 255, 255, 0.8); border-radius: 50%; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; user-select: none; touch-action: none; z-index: 5; cursor: pointer; pointer-events: auto; font-family: sans-serif;}
+    #btn-run:active { background: rgba(255, 59, 59, 0.9); transform: scale(0.95); }
+
+    #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; flex-direction: column; justify-content: center; align-items: center; color: white; font-family: sans-serif; text-align: center; z-index: 10; pointer-events: auto; }
+    #overlay h1 { margin: 0 0 10px 0; font-size: 40px; }
+    #overlay p { margin: 0 0 20px 0; font-size: 18px; }
+    #overlay button { padding: 10px 30px; font-size: 20px; background: #ff4c00; color: white; border: none; border-radius: 8px; font-weight: bold; }
   </style>
 </head>
 <body>
   
   <div id="auth-container">
-    
-    <!-- LOGO & JUDUL -->
     <div class="logo-area">
       <div class="logo-box">
-        <!-- Icon Runner (SVG) -->
         <svg viewBox="0 0 24 24"><path d="M13.5,5.5c1.1,0,2-0.9,2-2s-0.9-2-2-2s-2,0.9-2,2S12.4,5.5,13.5,5.5z M9.8,8.9L7,23h2.1l1.8-8l2.1,2v6h2v-7.5l-2.1-2l0.6-3C14.8,12,16.8,13,19,13v-2c-1.9,0-3.5-1-4.3-2.4l-1-1.6c-0.4-0.6-1-1-1.7-1c-0.3,0-0.5,0.1-0.8,0.1L6,8.3V13h2V9.6l1.8-0.7z"/></svg>
       </div>
       <h1>PARKOUR 3D</h1>
       <p>DEVELOPED BY <span>PUTZZDEV</span></p>
-      
       <div class="status-online">
         <div class="status-dot"></div>
-        <span id="online-count">Server Aktif</span>
+        <span>Server Aktif</span>
       </div>
     </div>
 
-    <!-- TAB MENU -->
-    <div class="tab-container">
-      <button class="tab-btn active" id="tab-login">MASUK</button>
-      <button class="tab-btn" id="tab-register">DAFTAR</button>
+    <!-- SISTEM TAB PAKAI RADIO BUTTON (ANTI GAGAL KLIK) -->
+    <input type="radio" name="tabs" id="tab1" checked>
+    <input type="radio" name="tabs" id="tab2">
+
+    <div class="tabs">
+      <label class="tab-label" for="tab1" id="label-login">MASUK</label>
+      <label class="tab-label" for="tab2" id="label-register">DAFTAR</label>
     </div>
 
-    <!-- FORM LOGIN -->
-    <div class="form-box active" id="form-login">
-      <div class="input-group">
-        <label>👤 USERNAME</label>
-        <div class="input-wrapper">
-          <span class="icon">👤</span>
-          <input type="text" id="login-username" placeholder="Username kamu..." maxlength="15" autocomplete="off">
+    <div class="form-container">
+      <!-- FORM LOGIN -->
+      <div class="form-box" id="form-login">
+        <div class="input-group">
+          <label>👤 USERNAME</label>
+          <div class="input-wrapper">
+            <span class="icon">👤</span>
+            <input type="text" id="login-username" placeholder="Username kamu..." maxlength="15" autocomplete="off">
+          </div>
         </div>
-      </div>
-      <div class="input-group">
-        <label>🔒 PIN (6 ANGKA)</label>
-        <div class="input-wrapper">
-          <span class="icon">🔑</span>
-          <input type="password" id="login-pin" placeholder="Masukkan PIN..." maxlength="6" inputmode="numeric" autocomplete="off">
+        <div class="input-group">
+          <label>🔒 PIN (6 ANGKA)</label>
+          <div class="input-wrapper">
+            <span class="icon">🔑</span>
+            <input type="password" id="login-pin" placeholder="Masukkan PIN..." maxlength="6" inputmode="numeric" autocomplete="off">
+          </div>
         </div>
+        <button class="btn-submit" id="btn-login" type="button">MASUK GAME</button>
+        <div class="msg" id="login-msg"></div>
       </div>
-      <button class="btn-submit" id="btn-login">MASUK GAME</button>
-      <div class="msg" id="login-msg"></div>
-    </div>
 
-    <!-- FORM REGISTRASI -->
-    <div class="form-box" id="form-register">
-      <div class="input-group">
-        <label>👤 USERNAME BARU</label>
-        <div class="input-wrapper">
-          <span class="icon">👤</span>
-          <input type="text" id="reg-username" placeholder="Buat username..." maxlength="15" autocomplete="off">
+      <!-- FORM REGISTRASI -->
+      <div class="form-box" id="form-register">
+        <div class="input-group">
+          <label>👤 USERNAME BARU</label>
+          <div class="input-wrapper">
+            <span class="icon">👤</span>
+            <input type="text" id="reg-username" placeholder="Buat username..." maxlength="15" autocomplete="off">
+          </div>
         </div>
-      </div>
-      <div class="input-group">
-        <label>🔒 BUAT PIN (6 ANGKA)</label>
-        <div class="input-wrapper">
-          <span class="icon">🔑</span>
-          <input type="password" id="reg-pin" placeholder="Buat PIN..." maxlength="6" inputmode="numeric" autocomplete="off">
+        <div class="input-group">
+          <label>🔒 BUAT PIN (6 ANGKA)</label>
+          <div class="input-wrapper">
+            <span class="icon">🔑</span>
+            <input type="password" id="reg-pin" placeholder="Buat PIN..." maxlength="6" inputmode="numeric" autocomplete="off">
+          </div>
         </div>
-      </div>
-      <div class="input-group">
-        <label>🔒 KONFIRMASI PIN</label>
-        <div class="input-wrapper">
-          <span class="icon">🔑</span>
-          <input type="password" id="reg-pin-confirm" placeholder="Ulangi PIN..." maxlength="6" inputmode="numeric" autocomplete="off">
+        <div class="input-group">
+          <label>🔒 KONFIRMASI PIN</label>
+          <div class="input-wrapper">
+            <span class="icon">🔑</span>
+            <input type="password" id="reg-pin-confirm" placeholder="Ulangi PIN..." maxlength="6" inputmode="numeric" autocomplete="off">
+          </div>
         </div>
+        <button class="btn-submit" id="btn-register" type="button">DAFTAR AKUN</button>
+        <div class="msg" id="reg-msg"></div>
       </div>
-      <button class="btn-submit" id="btn-register">DAFTAR AKUN</button>
-      <div class="msg" id="reg-msg"></div>
     </div>
-
   </div>
 
-  <script type="module" src="main.js"></script>>
+  <!-- LAYAR GAME 3D -->
+  <div id="game-ui">
+    <div id="hud">
+      <span id="hud-username">Player</span>
+      <div id="hud-verified">✔</div>
+    </div>
+    <div id="rotate-overlay">
+      <div class="icon">📱</div>
+      <h2 style="margin:0 0 10px 0;">Putar HP Kamu</h2>
+      <p style="margin:0; opacity:0.7;">Mainkan game ini dalam mode Landscape (Miring)</p>
+    </div>
+    <div id="joystick-area"><div id="joystick-zone"><div id="joystick-knob"></div></div></div>
+    <div id="btn-jump">LOMPAT</div>
+    <div id="btn-run">LARI</div>
+    <div id="overlay">
+      <h1 id="overlay-title">GAME OVER</h1>
+      <p id="overlay-desc">Kamu gagal!</p>
+      <button id="btn-restart" type="button">COBA LAGI</button>
+    </div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module" src="./main.js"></script>
 </body>
 </html>
